@@ -5,9 +5,11 @@ export default function ProductCard({ product, showDelete = false, onDelete }) {
     <div className="product-card">
       <div className="product-image-wrap">
         <img
-          src={product.imageBase64}
+          src={product.thumbBase64 || product.imageBase64 || product.fullBase64}
           alt={product.name}
           className="product-image"
+          loading="lazy"
+          decoding="async"
         />
       </div>
 

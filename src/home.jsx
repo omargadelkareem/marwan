@@ -1,16 +1,43 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import ProductCard from "./ProductCard";
-import { listenToProducts } from "./poduct";
-
+import { fetchProductsPage, fetchMoreProductsPage } from "./poduct";
 
 export default function Home() {
+  const PAGE_SIZE = 15;
+
   const [products, setProducts] = useState([]);
+  const [cursor, setCursor] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = listenToProducts(setProducts);
-    return () => unsubscribe();
+    (async () => {
+      try {
+        setLoading(true);
+        const { items, lastCursor } = await fetchProductsPage(PAGE_SIZE);
+        setProducts(items);
+        setCursor(lastCursor);
+        setHasMore(items.length === PAGE_SIZE);
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, []);
+
+  const handleLoadMore = async () => {
+    if (!hasMore || loadingMore) return;
+    try {
+      setLoadingMore(true);
+      const { items, lastCursor } = await fetchMoreProductsPage(cursor, PAGE_SIZE);
+      setProducts((prev) => [...prev, ...items]);
+      setCursor(lastCursor);
+      setHasMore(items.length === PAGE_SIZE);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   return (
     <div className="page">
@@ -20,31 +47,36 @@ export default function Home() {
             <h1 className="brand">Luxe Lingerie</h1>
             <p className="subtitle">Elegant. Soft. Feminine.</p>
           </div>
-
-          <Link to="/admin-secret-2025" className="admin-btn">
-            لوحة التحكم
-          </Link>
+          <Link to="/admin-secret-2025" className="admin-btn">لوحة التحكم</Link>
         </div>
       </header>
 
       <section className="hero container">
         <span className="hero-chip">Exclusive Collection</span>
         <h2>تشكيلة فاخرة بواجهة أكثر أناقة واحترافية</h2>
-        <p>منتجاتك تُعرض مباشرة من Firebase Realtime Database</p>
       </section>
 
       <section className="container">
-        {products.length === 0 ? (
-          <div className="empty-state">
-            <h3>لا توجد منتجات حاليًا</h3>
-            <p>ابدأ بإضافة أول منتج من لوحة التحكم.</p>
-          </div>
+        {loading ? (
+          <div className="empty-state"><h3>جاري تحميل المنتجات...</h3></div>
+        ) : products.length === 0 ? (
+          <div className="empty-state"><h3>لا توجد منتجات حاليًا</h3></div>
         ) : (
-          <div className="grid">
-            {products.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
+          <>
+            <div className="grid">
+              {products.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
+
+            {hasMore && (
+              <div style={{ display: "flex", justifyContent: "center", padding: "20px 0 60px" }}>
+                <button className="admin-btn" onClick={handleLoadMore} disabled={loadingMore}>
+                  {loadingMore ? "جاري تحميل المزيد..." : "عرض المزيد"}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </section>
     </div>
